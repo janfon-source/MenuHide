@@ -70,12 +70,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             self?.applyCollapsed()
         }
-        // MenuHide's button ends the other apps' icons: check once the menu bar has filled in,
-        // and again whenever an app comes or goes, since a new icon may land right of it.
-        keepToggleRightmost(after: 3)
+        // MenuHide's button sits between the apps' icons and Apple's: check once the menu bar has
+        // filled in, and again whenever an app comes or goes, since a new icon may land anywhere.
+        keepToggleBetween(after: 3)
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
             NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.keepToggleRightmost(after: 3)
+                self?.keepToggleBetween(after: 3)
             }
         }
         applyLanguage()
@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard MenuBar.isTrusted else { return }
             timer.invalidate()
             self?.accessTimer = nil
-            self?.keepToggleRightmost(after: 0.5)
+            self?.keepToggleBetween(after: 0.5)
         }
     }
 
@@ -200,13 +200,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingCheck: DispatchWorkItem?
     private var arranging = false
 
-    /// Moves the button right of the other apps' icons, `delay` seconds from now. Calls close
+    /// Puts the button back between the apps' icons and Apple's, `delay` seconds from now. Calls close
     /// together come to one check; none happens while arranging, or without Accessibility access.
-    private func keepToggleRightmost(after delay: TimeInterval) {
+    private func keepToggleBetween(after delay: TimeInterval) {
         pendingCheck?.cancel()
         let check = DispatchWorkItem { [weak self] in
             guard let self, !self.arranging, MenuBar.isTrusted else { return }
-            DispatchQueue.global(qos: .utility).async { Arranger.keepToggleRightmost() }
+            DispatchQueue.global(qos: .utility).async { Arranger.keepToggleBetween() }
         }
         pendingCheck = check
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: check)
@@ -228,8 +228,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         arranging = true
         let slots = Layout.slots(for: entries)
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) {
-            let failed = Arranger.arrange(slots)
-            Arranger.keepToggleRightmost()
+            let failed = Arranger.arrange(left: slots.left, right: slots.right)
+            Arranger.keepToggleBetween()
             DispatchQueue.main.async {
                 self.collapsed = wasCollapsed
                 self.arranging = false

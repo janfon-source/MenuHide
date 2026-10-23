@@ -59,9 +59,16 @@ enum Layout {
             .union(alwaysShown.subtracting(keys))
     }
 
-    /// Left to right on the menu bar: the hidden icons, the divider, then the always-shown ones.
-    static func slots(for entries: [Entry]) -> [Arranger.Slot] {
-        entries.filter { !$0.alwaysShown }.map { .icon($0.key) } + [.divider]
-            + entries.filter(\.alwaysShown).map { .icon($0.key) }
+    /// Left to right on the menu bar: the hidden icons (apps', then Apple's), the divider, the
+    /// always-shown apps' icons, then MenuHide's button; right of it, Apple's always-shown icons.
+    /// Hidden icons can only be left of the divider: the menu bar hides an icon by taking it and
+    /// everything left of it into the « menu.
+    static func slots(for entries: [Entry]) -> (left: [Arranger.Slot], right: [String]) {
+        let hidden = entries.filter { !$0.alwaysShown }
+        let shown = entries.filter(\.alwaysShown)
+        // Each group keeps its own order, apps before Apple's.
+        let hiddenInOrder = hidden.filter { !$0.isSystem } + hidden.filter(\.isSystem)
+        return (hiddenInOrder.map { .icon($0.key) } + [.divider] + shown.filter { !$0.isSystem }.map { .icon($0.key) },
+                shown.filter(\.isSystem).map(\.key))
     }
 }
