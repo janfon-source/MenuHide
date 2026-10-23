@@ -36,7 +36,8 @@ enum Layout {
     /// then new ones where they are. With nothing saved yet, icons showing now (right of the
     /// divider, which must be expanded) start as always shown, so nothing vanishes unasked.
     static func entries() -> [Entry] {
-        let items = MenuBar.items(rescan: true).filter { !MenuBar.isSystem($0) }
+        // Icons turned off in System Settings can't be moved, so they aren't listed.
+        let items = MenuBar.items(rescan: true).filter { !MenuBar.isSystem($0) && MenuBar.isShowing($0) }
         let saved = order, shown = alwaysShown
         let dividerRight = Arranger.ownFrames()?.divider.maxX ?? 0
         let placed = items.sorted { a, b in

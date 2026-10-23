@@ -70,6 +70,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             self?.applyCollapsed()
         }
+        // MenuHide's button ends the other apps' icons: check once the menu bar has filled in,
+        // and again whenever an app comes or goes, since a new icon may land right of it.
+        keepToggleRightmost(after: 3)
+        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.keepToggleRightmost(after: 3)
+            }
+        }
         applyLanguage()
         NotificationCenter.default.addObserver(forName: Language.didChange, object: nil, queue: .main) { [weak self] _ in
             self?.applyLanguage()
@@ -140,6 +148,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Arranging
 
+    private var pendingCheck: DispatchWorkItem?
+    private var arranging = false
+
+    /// Moves the button right of the other apps' icons, `delay` seconds from now. Calls close
+    /// together come to one check; none happens while arranging, or without Accessibility access.
+    private func keepToggleRightmost(after delay: TimeInterval) {
+        pendingCheck?.cancel()
+        let check = DispatchWorkItem { [weak self] in
+            guard let self, !self.arranging, MenuBar.isTrusted else { return }
+            DispatchQueue.global(qos: .utility).async { Arranger.keepToggleRightmost() }
+        }
+        pendingCheck = check
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: check)
+    }
+
     /// The settings list shows every icon, so the hidden ones come out of the « menu first.
     @objc private func showSettings() {
         collapsed = false
@@ -153,11 +176,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func arrange(_ entries: [Entry], done: @escaping ([String]) -> Void) {
         let wasCollapsed = collapsed
         collapsed = false
+        arranging = true
         let slots = Layout.slots(for: entries)
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5) {
             let failed = Arranger.arrange(slots)
+            Arranger.keepToggleRightmost()
             DispatchQueue.main.async {
                 self.collapsed = wasCollapsed
+                self.arranging = false
                 done(failed)
             }
         }

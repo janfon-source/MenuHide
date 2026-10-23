@@ -67,6 +67,35 @@ enum Arranger {
         }
     }
 
+    /// Keeps MenuHide's button right of every other app's icon: any icon that has ended up right
+    /// of it (a new app's, or one ⌘-dragged there) moves to just left of it, in among the
+    /// always-shown icons, keeping their order. (The button itself won't follow a synthesized
+    /// drag, so the icons move instead.) Runs off the main thread. Returns whether all is in place.
+    @discardableResult
+    static func keepToggleRightmost() -> Bool {
+        let cursor = CGEvent(source: nil)?.location
+        defer { if let cursor { post(.mouseMoved, at: cursor) } }
+        var rescan = true
+        // Left to right, each dropped just left of the button, so they keep their order.
+        for _ in 0..<12 {
+            guard let toggle = ownFrames()?.toggle else { return false }
+            guard let next = appIcons(rescan: rescan).filter({ $0.minX > toggle.minX }).min(by: { $0.minX < $1.minX })
+            else { return true }
+            rescan = false
+            drag(from: CGPoint(x: next.midX, y: next.midY), to: CGPoint(x: toggle.minX - 3, y: next.midY))
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+        return false
+    }
+
+    /// Where the other apps' icons that are really on the menu bar are (not ones turned off in
+    /// System Settings, which still report a frame).
+    private static func appIcons(rescan: Bool) -> [CGRect] {
+        MenuBar.items(rescan: rescan)
+            .filter { !MenuBar.isSystem($0) && $0.pid != getpid() && MenuBar.isShowing($0) }
+            .map(\.frame)
+    }
+
     /// Whether `frame` sits right next to the anchor, on its left. Icons are a few points apart;
     /// anything between them would leave a wider gap. Other icons' frames aren't consulted, since
     /// an app's icon turned off in System Settings still reports a frame, wherever it last was.

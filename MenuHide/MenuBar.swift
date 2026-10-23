@@ -73,6 +73,23 @@ enum MenuBar {
         return agents.contains(item.bundleID)
     }
 
+    /// Whether the icon is really on the menu bar. An icon turned off in System Settings still
+    /// reports a frame, wherever it last was, on top of some other icon; what's actually at the
+    /// middle of that frame tells them apart.
+    static func isShowing(_ item: MenuBarItem) -> Bool {
+        var hit: AXUIElement?
+        let systemWide = AXUIElementCreateSystemWide()
+        guard AXUIElementCopyElementAtPosition(systemWide, Float(item.frame.midX), Float(item.frame.midY), &hit) == .success,
+              var element = hit else { return false }
+        // The hit may be something inside the icon; walk up to it.
+        for _ in 0..<4 {
+            if CFEqual(element, item.element) { return true }
+            guard let parent: AXUIElement = attribute(element, kAXParentAttribute) else { return false }
+            element = parent
+        }
+        return false
+    }
+
     static func frame(of element: AXUIElement) -> CGRect? {
         guard let position: AXValue = attribute(element, kAXPositionAttribute),
               let size: AXValue = attribute(element, kAXSizeAttribute) else { return nil }
