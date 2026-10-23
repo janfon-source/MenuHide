@@ -61,9 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(toggleClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
-        divider = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        divider = NSStatusBar.system.statusItem(withLength: Self.dividerLength)
         divider.autosaveName = "menuhide.divider"
-        divider.button?.image = Self.symbol("line.diagonal")
+        divider.button?.image = Self.dividerImage
         Arranger.ownItems = (toggle, divider)
 
         applyCollapsed()
@@ -85,8 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyCollapsed() {
-        divider.length = collapsed ? collapsedLength : NSStatusItem.variableLength
-        divider.button?.image = collapsed ? nil : Self.symbol("line.diagonal")
+        divider.length = collapsed ? collapsedLength : Self.dividerLength
+        divider.button?.image = collapsed ? nil : Self.dividerImage
         toggle.button?.image = Self.symbol(collapsed ? "chevron.left.circle" : "chevron.right.circle")
     }
 
@@ -96,6 +96,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         toggle.button?.setAccessibilityLabel(tr("隨手藏", "MenuHide"))
         divider.button?.toolTip = tr("左邊的圖示會被隱藏；按住 ⌘ 拖曳圖示來調整", "Icons left of this are hidden; ⌘-drag icons to arrange them")
     }
+
+    /// Narrower than an icon's usual width: just room for the line and a little space either side.
+    private static let dividerLength: CGFloat = 12
+
+    /// A thin upright line, "|", in the menu bar's text color.
+    private static let dividerImage: NSImage = {
+        let image = NSImage(size: NSSize(width: 2, height: 16), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: NSRect(x: 0.25, y: 1, width: 1.5, height: rect.height - 2), xRadius: 0.75, yRadius: 0.75).fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
 
     private static func symbol(_ name: String) -> NSImage? {
         let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
