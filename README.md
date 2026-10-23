@@ -42,7 +42,7 @@ These come from how macOS 27 runs the menu bar; there's no way around them for a
 
 ## Install
 
-Requires macOS 13 or later (developed and tested on macOS 27), and Xcode or the Command Line Tools (`xcode-select --install`).
+Requires **macOS 27 or later**, and Xcode or the Command Line Tools (`xcode-select --install`). MenuHide is built on how the macOS 27 menu bar works (hiding through its « menu, Apple's icons under MenuBarAgent); earlier versions lay the menu bar out differently, so it doesn't run on them.
 
 ```sh
 ./build.sh install   # builds and installs /Applications/隨手藏.app
@@ -92,7 +92,7 @@ Run `./build.sh` alone to build into `build/隨手藏.app` without installing.
 
 ### 安裝
 
-需要 macOS 13 以上（在 macOS 27 上開發和測試），以及 Xcode 或 Command Line Tools（`xcode-select --install`）。
+需要 **macOS 27 以上**，以及 Xcode 或 Command Line Tools（`xcode-select --install`）。隨手藏是依 macOS 27 選單列的運作方式做的（透過「«」選單隱藏、系統圖示由 MenuBarAgent 管理）；更早的版本選單列運作方式不同，所以無法在上面執行。
 
 ```sh
 ./build.sh install   # 編譯並安裝到 /Applications/隨手藏.app

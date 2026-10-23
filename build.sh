@@ -12,7 +12,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 [[ -f MenuHide/AppIcon.icns ]] || swift tools/make_icon.swift
 
 swiftc -O -swift-version 5 -parse-as-library \
-  -target "$(uname -m)-apple-macos13.0" \
+  -target "$(uname -m)-apple-macos27.0" \
   MenuHide/*.swift -o "$APP/Contents/MacOS/MenuHide"
 
 cp MenuHide/AppIcon.icns "$APP/Contents/Resources/"
@@ -32,7 +32,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleShortVersionString</key><string>2026.a1</string>
 	<key>CFBundleVersion</key><string>2026.a1</string>
 	<key>CFBundleDevelopmentRegion</key><string>zh_TW</string>
-	<key>LSMinimumSystemVersion</key><string>13.0</string>
+	<key>LSMinimumSystemVersion</key><string>27.0</string>
 	<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 	<key>LSUIElement</key><true/>
 	<key>NSHighResolutionCapable</key><true/>
