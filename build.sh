@@ -41,7 +41,17 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --sign - "$APP"
+# Accessibility access is granted to an app by its signature. An ad-hoc signature changes with
+# every build, which would lose the access each time; a certificate of one's own keeps it.
+# Make one with Keychain Access (Certificate Assistant → Create a Certificate, type Code
+# Signing) named as below; without it the build is signed ad hoc.
+IDENTITY="MenuHide Local Signing"
+if security find-identity -p codesigning | grep -q "\"$IDENTITY\""; then
+  codesign --force --sign "$IDENTITY" "$APP"
+else
+  codesign --force --sign - "$APP"
+  echo "No \"$IDENTITY\" certificate: signed ad hoc, so Accessibility access must be granted again after each build." >&2
+fi
 echo "Built $APP"
 
 if [[ "${1:-}" == "install" ]]; then
