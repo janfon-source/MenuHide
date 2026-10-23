@@ -182,6 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         login.target = self
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(.separator())
+        menu.addItem(withTitle: tr("關於隨手藏", "About MenuHide"), action: #selector(showAbout), keyEquivalent: "").target = self
         menu.addItem(withTitle: tr("結束隨手藏", "Quit MenuHide"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         toggle.menu = menu
         toggle.button?.performClick(nil)
@@ -189,6 +190,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleFromMenu() { collapsed.toggle() }
+
+    @objc private func showAbout() { About.show() }
 
     @objc private func toggleLaunchAtLogin() {
         let service = SMAppService.mainApp

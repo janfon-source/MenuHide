@@ -42,9 +42,27 @@ These come from how macOS 27 runs the menu bar; there's no way around them for a
 
 ## Install
 
-Requires **macOS 27 or later**, and Xcode or the Command Line Tools (`xcode-select --install`). MenuHide is built on how the macOS 27 menu bar works (hiding through its « menu, Apple's icons under MenuBarAgent); earlier versions lay the menu bar out differently, so it doesn't run on them.
+Requires **macOS 27 or later**, on Apple silicon. MenuHide is built on how the macOS 27 menu bar works (hiding through its « menu, Apple's icons under MenuBarAgent); earlier versions lay the menu bar out differently, so it doesn't run on them.
+
+### Download
+
+Paste this into Terminal to download the latest version, install it in Applications and open it:
 
 ```sh
+curl -L https://github.com/janfon-source/MenuHide/releases/latest/download/MenuHide.zip -o /tmp/MenuHide.zip && ditto -x -k /tmp/MenuHide.zip /Applications && open /Applications/隨手藏.app
+```
+
+Or download the zip from [Releases](https://github.com/janfon-source/MenuHide/releases/latest), unzip it and move 隨手藏 to Applications. The app isn't notarized, so a browser download is blocked the first time: try to open it, click Done at the warning, then click Open Anyway in System Settings → Privacy & Security. The Terminal command above avoids this.
+
+Then allow MenuHide under System Settings → Privacy & Security → Accessibility; it asks at launch until you do.
+
+### Build from source
+
+Requires Xcode or the Command Line Tools (`xcode-select --install`).
+
+```sh
+git clone https://github.com/janfon-source/MenuHide.git
+cd MenuHide
 ./build.sh install   # builds and installs /Applications/隨手藏.app
 ```
 
@@ -92,9 +110,27 @@ Run `./build.sh` alone to build into `build/隨手藏.app` without installing.
 
 ### 安裝
 
-需要 **macOS 27 以上**，以及 Xcode 或 Command Line Tools（`xcode-select --install`）。隨手藏是依 macOS 27 選單列的運作方式做的（透過「«」選單隱藏、系統圖示由 MenuBarAgent 管理）；更早的版本選單列運作方式不同，所以無法在上面執行。
+需要 **macOS 27 以上**、Apple 晶片的 Mac。隨手藏是依 macOS 27 選單列的運作方式做的（透過「«」選單隱藏、系統圖示由 MenuBarAgent 管理）；更早的版本選單列運作方式不同，所以無法在上面執行。
+
+#### 直接下載
+
+在「終端機」貼上這一行，會下載最新版、安裝到「應用程式」並打開：
 
 ```sh
+curl -L https://github.com/janfon-source/MenuHide/releases/latest/download/MenuHide.zip -o /tmp/MenuHide.zip && ditto -x -k /tmp/MenuHide.zip /Applications && open /Applications/隨手藏.app
+```
+
+也可以到 [Releases](https://github.com/janfon-source/MenuHide/releases/latest) 下載壓縮檔，解壓縮後把「隨手藏」拖到「應用程式」。隨手藏沒有經過 Apple 公證，用瀏覽器下載的版本第一次打開會被擋下：先打開一次，出現警告後按「完成」，再到「系統設定」→「隱私權與安全性」，在下方按「強制打開」。用上面的終端機指令安裝則不會被擋。
+
+裝好後，到「系統設定」→「隱私權與安全性」→「輔助使用」允許「隨手藏」；還沒允許前，每次開啟都會提醒。
+
+#### 從原始碼編譯
+
+需要 Xcode 或 Command Line Tools（`xcode-select --install`）。
+
+```sh
+git clone https://github.com/janfon-source/MenuHide.git
+cd MenuHide
 ./build.sh install   # 編譯並安裝到 /Applications/隨手藏.app
 ```
 
