@@ -82,6 +82,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: Language.didChange, object: nil, queue: .main) { [weak self] _ in
             self?.applyLanguage()
         }
+        if !MenuBar.isTrusted {
+            // After the icons are up, so the alert has something to refer to.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.askForAccess() }
+        }
+    }
+
+    // MARK: Accessibility access
+
+    private var accessTimer: Timer?
+
+    /// Says what Accessibility access is for and offers to open its page in System Settings.
+    /// Without it, hiding and showing still work, but nothing can be read or moved.
+    private func askForAccess() {
+        let alert = NSAlert()
+        alert.messageText = tr("隨手藏需要「輔助使用」權限", "MenuHide needs Accessibility access")
+        alert.informativeText = tr("隨手藏要用「輔助使用」權限讀取選單列上的圖示，並把它們移到你設定的位置。沒有這個權限時，仍可顯示或隱藏圖示，但無法排序，也無法讓隨手藏的按鈕保持在其他 App 圖示的最右邊。\n\n請到「系統設定」→「隱私權與安全性」→「輔助使用」，打開「隨手藏」。",
+                                   "MenuHide uses Accessibility access to read the icons on the menu bar and move them where you want them. Without it, icons can still be hidden and shown, but not arranged, and MenuHide’s button can’t be kept right of the other apps’ icons.\n\nTurn on MenuHide in System Settings → Privacy & Security → Accessibility.")
+        alert.addButton(withTitle: tr("開啟「輔助使用」設定", "Open Accessibility Settings"))
+        alert.addButton(withTitle: tr("稍後", "Later"))
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        MenuBar.requestAccess()   // adds MenuHide to the list, switched off, for one click
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        waitForAccess()
+    }
+
+    /// Notices when access is granted, to put the button in its place straight away.
+    private func waitForAccess() {
+        accessTimer?.invalidate()
+        accessTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] timer in
+            guard MenuBar.isTrusted else { return }
+            timer.invalidate()
+            self?.accessTimer = nil
+            self?.keepToggleRightmost(after: 0.5)
+        }
     }
 
     private func applyCollapsed() {
