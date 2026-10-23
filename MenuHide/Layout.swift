@@ -7,6 +7,7 @@ struct Entry {
     let appName: String
     let label: String
     let icon: NSImage?
+    let isSystem: Bool
     var alwaysShown: Bool
 
     var title: String { label.isEmpty || label == appName ? appName : "\(appName) — \(label)" }
@@ -30,14 +31,13 @@ enum Layout {
         set { UserDefaults.standard.set(newValue.sorted(), forKey: Keys.alwaysShown) }
     }
 
-    static var hasSaved: Bool { UserDefaults.standard.object(forKey: Keys.order) != nil }
-
-    /// The other apps' icons on the menu bar now: those already arranged in their saved order,
-    /// then new ones where they are. With nothing saved yet, icons showing now (right of the
-    /// divider, which must be expanded) start as always shown, so nothing vanishes unasked.
+    /// The menu bar's icons now, other apps' and Apple's (but not the ones that can't move): those
+    /// already arranged in their saved order, then new ones where they are. An icon not arranged
+    /// before starts as always shown if it's showing now (right of the divider, which must be
+    /// expanded), so nothing vanishes unasked.
     static func entries() -> [Entry] {
         // Icons turned off in System Settings can't be moved, so they aren't listed.
-        let items = MenuBar.items(rescan: true).filter { !MenuBar.isSystem($0) && MenuBar.isShowing($0) }
+        let items = MenuBar.items(rescan: true).filter { !MenuBar.isFixed($0) && $0.pid != getpid() && MenuBar.isShowing($0) }
         let saved = order, shown = alwaysShown
         let dividerRight = Arranger.ownFrames()?.divider.maxX ?? 0
         let placed = items.sorted { a, b in
@@ -45,8 +45,9 @@ enum Layout {
             return i != j ? i < j : a.frame.minX < b.frame.minX
         }
         return placed.map { item in
-            Entry(key: item.key, bundleID: item.bundleID, appName: item.appName, label: item.label, icon: item.icon,
-                  alwaysShown: hasSaved ? shown.contains(item.key) : item.frame.minX >= dividerRight)
+            Entry(key: item.key, bundleID: item.bundleID, appName: item.isSystem ? item.label : item.appName,
+                  label: item.isSystem ? "" : item.label, icon: item.icon, isSystem: item.isSystem,
+                  alwaysShown: saved.contains(item.key) ? shown.contains(item.key) : item.frame.minX >= dividerRight)
         }
     }
 

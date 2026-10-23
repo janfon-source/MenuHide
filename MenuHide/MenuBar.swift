@@ -6,16 +6,27 @@ struct MenuBarItem {
     let pid: pid_t
     let bundleID: String
     let appName: String
-    /// What the item calls itself, if anything (often nothing).
+    /// What the item calls itself, if anything (often nothing for an app's icon).
     let label: String
+    /// The system's name for one of its own icons, such as com.apple.menuextra.wifi.
+    let identifier: String?
     /// Its place among the same app's items, left to right, from 0: an app can have several.
     var index: Int
     let frame: CGRect
 
     /// Stays the same for the same icon across launches, to remember its place and setting by.
-    var key: String { "\(bundleID)#\(index)" }
+    var key: String { identifier ?? "\(bundleID)#\(index)" }
 
-    var icon: NSImage? { NSRunningApplication(processIdentifier: pid)?.icon }
+    var isSystem: Bool { MenuBar.isSystem(self) }
+
+    /// The app's icon, or for one of Apple's own a symbol like the one on the menu bar.
+    var icon: NSImage? {
+        if isSystem {
+            let name = identifier.flatMap { id in MenuBar.symbols.first { id.contains($0.key) }?.value } ?? "gearshape"
+            return NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        }
+        return NSRunningApplication(processIdentifier: pid)?.icon
+    }
 }
 
 /// Reading the menu bar's icons. On macOS 27 they aren't windows of their own that the window
@@ -49,10 +60,18 @@ enum MenuBar {
                   let children: [AXUIElement] = attribute(bar, kAXChildrenAttribute) else { continue }
             let mine = children.compactMap { child -> MenuBarItem? in
                 guard let frame = frame(of: child) else { return nil }
-                let label = (attribute(child, kAXDescriptionAttribute) as String?).flatMap { $0.isEmpty ? nil : $0 }
-                    ?? attribute(child, kAXTitleAttribute) ?? ""
+                // The system's icons are groups with the named item inside.
+                let named = (attribute(child, kAXChildrenAttribute) as [AXUIElement]?)?.first.flatMap {
+                    (attribute($0, "AXIdentifier") as String?) == nil ? nil : $0
+                } ?? child
+                let identifier: String? = attribute(named, "AXIdentifier")
+                // "Wi‑Fi，已連接，3格": the name, without the state after it.
+                let description = (attribute(named, kAXDescriptionAttribute) as String?)?
+                    .components(separatedBy: CharacterSet(charactersIn: "，,")).first ?? ""
+                let label = description.isEmpty ? attribute(named, kAXTitleAttribute) ?? "" : description
                 return MenuBarItem(element: child, pid: app.processIdentifier, bundleID: bundleID,
-                                   appName: app.localizedName ?? bundleID, label: label, index: 0, frame: frame)
+                                   appName: app.localizedName ?? bundleID, label: label,
+                                   identifier: identifier.flatMap { $0.isEmpty ? nil : $0 }, index: 0, frame: frame)
             }.sorted { $0.frame.minX < $1.frame.minX }
             if !mine.isEmpty { found.append(app.processIdentifier) }
             for (i, var item) in mine.enumerated() {
@@ -89,6 +108,23 @@ enum MenuBar {
         }
         return false
     }
+
+    /// Apple's icons that can't be moved: the clock and Control Center stay at the right end, and
+    /// the « menu (no name) is where the hidden icons go.
+    static func isFixed(_ item: MenuBarItem) -> Bool {
+        guard item.isSystem else { return false }
+        guard let id = item.identifier else { return item.bundleID == "com.apple.MenuBarAgent" }
+        return id.hasSuffix(".clock") || id.hasSuffix(".controlcenter")
+    }
+
+    /// Symbols for Apple's icons in the settings list, by part of their identifier.
+    static let symbols: [String: String] = [
+        "wifi": "wifi", "sound": "speaker.wave.2", "volume": "speaker.wave.2", "bluetooth": "dot.radiowaves.left.and.right",
+        "battery": "battery.100", "now-playing": "play.circle", "focus": "moon", "screen-mirroring": "rectangle.on.rectangle",
+        "display": "display", "airdrop": "airplayaudio", "keyboard": "keyboard", "spotlight": "magnifyingglass",
+        "siri": "mic", "timemachine": "clock.arrow.circlepath", "user": "person.crop.circle", "vpn": "network",
+        "accessibility": "accessibility", "stage": "rectangle.3.group", "weather": "cloud.sun",
+    ]
 
     static func frame(of element: AXUIElement) -> CGRect? {
         guard let position: AXValue = attribute(element, kAXPositionAttribute),

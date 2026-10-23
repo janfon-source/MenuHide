@@ -112,8 +112,8 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
 
     private func relabel() {
         window?.title = tr("隨手藏設定", "MenuHide Settings")
-        hint.stringValue = tr("由左到右對應選單列上的順序。拖曳可以調整順序，或拖到另一區；「隱藏」的圖示收起時會收進系統的 « 選單，「一直顯示」的不會。按「套用到選單列」後，隨手藏會用 ⌘ 拖曳把圖示一個個移到位，過程中請不要移動滑鼠。",
-                              "Left to right as on the menu bar. Drag to reorder, or into the other group. When collapsed, hidden icons go into the system’s « menu; always-shown ones stay. Apply to Menu Bar ⌘-drags each icon into place, so leave the mouse alone while it works.")
+        hint.stringValue = tr("由左到右對應選單列上的順序，App 和系統的圖示都在內（時鐘和控制中心固定在最右邊，不列入）。拖曳可以調整順序，或拖到另一區；「隱藏」的圖示收起時會收進系統的 « 選單，「一直顯示」的不會。按「套用到選單列」後，隨手藏會用 ⌘ 拖曳把圖示一個個移到位，過程中請不要移動滑鼠。",
+                              "Left to right as on the menu bar, apps’ and Apple’s icons alike (the clock and Control Center stay at the right end and aren’t listed). Drag to reorder, or into the other group. When collapsed, hidden icons go into the system’s « menu; always-shown ones stay. Apply to Menu Bar ⌘-drags each icon into place, so leave the mouse alone while it works.")
         permissionLabel.stringValue = tr("隨手藏需要「輔助使用」權限，才能讀取和移動選單列上的圖示。允許後請按「重新讀取」。",
                                          "MenuHide needs Accessibility access to read and move menu bar icons. Once it’s allowed, click Reload.")
         permissionButton.title = tr("開啟「輔助使用」設定…", "Open Accessibility Settings…")
@@ -174,7 +174,7 @@ final class SettingsWindow: NSWindowController, NSTableViewDataSource, NSTableVi
             let icon = NSImageView(image: entry.icon ?? NSImage(systemSymbolName: "app", accessibilityDescription: nil)!)
             icon.widthAnchor.constraint(equalToConstant: 18).isActive = true
             icon.heightAnchor.constraint(equalToConstant: 18).isActive = true
-            let name = NSTextField(labelWithString: entry.title)
+            let name = NSTextField(labelWithString: entry.title + (entry.isSystem ? tr("（系統）", " (system)") : ""))
             name.lineBreakMode = .byTruncatingTail
             name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             let check = NSButton(checkboxWithTitle: tr("一直顯示", "Always Show"), target: self, action: #selector(alwaysShowClicked(_:)))

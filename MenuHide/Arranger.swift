@@ -15,30 +15,52 @@ enum Arranger {
     /// must be showing its divider. Runs off the main thread, waiting for the menu bar to settle
     /// after each move. Returns the keys it couldn't place.
     static func arrange(_ slots: [Slot]) -> [String] {
-        var failed: [String] = []
         let cursor = CGEvent(source: nil)?.location
         defer { if let cursor { post(.mouseMoved, at: cursor) } }
-
         _ = MenuBar.items(rescan: true)
-        guard var anchor = ownFrames()?.toggle else { return [] }
+        // Now and then a move knocks an icon placed earlier out of line; a second pass, which
+        // skips every icon already in place, puts those right.
+        var failed = place(slots)
+        if !failed.isEmpty { failed = place(slots) }
+        return failed
+    }
+
+    /// One pass of `arrange`: returns the keys not in place afterwards.
+    private static func place(_ slots: [Slot]) -> [String] {
+        // Right to left, each just left of the one placed before it, starting from the button.
+        var anchor = Target.toggle
         for slot in slots.reversed() {
-            guard let frame = currentFrame(of: slot) else { continue }   // app not running
-            if !isJustLeft(frame, of: anchor) {
-                // Dropped on the anchor's left edge it lands just left of it; failing that, try
-                // half an icon further left.
-                for dropX in [anchor.minX - 3, anchor.minX - frame.width / 2] {
-                    guard let now = currentFrame(of: slot) else { break }
-                    drag(from: CGPoint(x: now.midX, y: now.midY), to: CGPoint(x: dropX, y: now.midY))
-                    Thread.sleep(forTimeInterval: 0.35)
-                    if let moved = currentFrame(of: slot),
-                       isJustLeft(moved, of: anchor) { break }
+            guard currentFrame(of: .slot(slot)) != nil else { continue }   // app not running
+            for attempt in 0..<4 {
+                guard let now = currentFrame(of: .slot(slot)), let target = currentFrame(of: anchor) else { break }
+                if isJustLeft(now, of: target) { break }
+                // Where to let go so it lands just left of the anchor. While an icon is dragged
+                // the others slide aside, and one dragged rightwards leaves a gap that closes,
+                // pulling the anchor left by about the icon's width; so try a few places.
+                let rightwards = now.midX < target.minX
+                let dropX: CGFloat
+                switch attempt {
+                case 0: dropX = rightwards ? target.minX - now.width - 4 : target.minX - 3
+                case 1: dropX = rightwards ? target.minX - 3 : target.minX - now.width / 2
+                case 2: dropX = target.minX - now.width / 2
+                default: dropX = target.minX + 2
                 }
+                drag(from: CGPoint(x: now.midX, y: now.midY), to: CGPoint(x: dropX, y: now.midY))
+                Thread.sleep(forTimeInterval: 0.35)
             }
-            guard let placed = currentFrame(of: slot) else { continue }
-            if !isJustLeft(placed, of: anchor), case .icon(let key) = slot {
+            anchor = .slot(slot)
+        }
+
+        // Check the whole row once it has settled: each in place just left of the next.
+        Thread.sleep(forTimeInterval: 0.3)
+        var failed: [String] = []
+        var right = Target.toggle
+        for slot in slots.reversed() {
+            guard let frame = currentFrame(of: .slot(slot)) else { continue }
+            if let next = currentFrame(of: right), !isJustLeft(frame, of: next), case .icon(let key) = slot {
                 failed.append(key)
             }
-            anchor = placed
+            right = .slot(slot)
         }
         return failed
     }
@@ -60,10 +82,17 @@ enum Arranger {
         return Thread.isMainThread ? read() : DispatchQueue.main.sync(execute: read)
     }
 
-    private static func currentFrame(of slot: Slot) -> CGRect? {
-        switch slot {
-        case .divider: return ownFrames()?.divider
-        case .icon(let key): return MenuBar.items().first { $0.key == key }?.frame
+    /// Something to find on the menu bar: MenuHide's button, or a slot.
+    private enum Target {
+        case toggle
+        case slot(Slot)
+    }
+
+    private static func currentFrame(of target: Target) -> CGRect? {
+        switch target {
+        case .toggle: return ownFrames()?.toggle
+        case .slot(.divider): return ownFrames()?.divider
+        case .slot(.icon(let key)): return MenuBar.items().first { $0.key == key }?.frame
         }
     }
 
@@ -96,11 +125,18 @@ enum Arranger {
             .map(\.frame)
     }
 
-    /// Whether `frame` sits right next to the anchor, on its left. Icons are a few points apart;
-    /// anything between them would leave a wider gap. Other icons' frames aren't consulted, since
-    /// an app's icon turned off in System Settings still reports a frame, wherever it last was.
+    /// Whether `frame` is the icon immediately left of the anchor, among the icons really showing.
     private static func isJustLeft(_ frame: CGRect, of anchor: CGRect) -> Bool {
-        frame.maxX <= anchor.minX + 3 && anchor.minX - frame.maxX < 18
+        guard frame.maxX <= anchor.minX + 3 else { return false }
+        let between = showingFrames().filter { $0.midX > frame.midX + 1 && $0.midX < anchor.midX - 1 }
+        return between.isEmpty
+    }
+
+    /// Every icon on the menu bar that is really showing, MenuHide's own included.
+    private static func showingFrames() -> [CGRect] {
+        var frames = MenuBar.items().filter { $0.pid != getpid() && MenuBar.isShowing($0) }.map(\.frame)
+        if let own = ownFrames() { frames += [own.toggle, own.divider] }
+        return frames
     }
 
     // MARK: Mouse events
