@@ -4,8 +4,6 @@ import AppKit
 
 let backTop = NSColor(red: 0.420, green: 0.361, blue: 0.906, alpha: 1)
 let backBottom = NSColor(red: 0.255, green: 0.200, blue: 0.663, alpha: 1)
-let bar = NSColor(white: 1, alpha: 0.95)
-let dim = NSColor(white: 1, alpha: 0.35)
 
 func render(_ px: Int) -> Data {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px,
@@ -17,29 +15,34 @@ func render(_ px: Int) -> Data {
 
     // macOS icon grid: ~10% transparent margin around a rounded square.
     let body = NSRect(x: s * 0.1, y: s * 0.1, width: s * 0.8, height: s * 0.8)
-    NSGradient(starting: backTop, ending: backBottom)!
-        .draw(in: NSBezierPath(roundedRect: body, xRadius: s * 0.18, yRadius: s * 0.18), angle: -90)
+    let square = NSBezierPath(roundedRect: body, xRadius: s * 0.18, yRadius: s * 0.18)
+    NSGradient(starting: backTop, ending: backBottom)!.draw(in: square, angle: -90)
 
-    // A row of menu bar icons: the ones on the left fade away behind a chevron, the ones on
-    // the right stay bright.
-    let y = s * 0.5, r = s * 0.055
-    for (i, x) in [0.24, 0.36].enumerated() {
-        dim.withAlphaComponent(0.2 + 0.15 * CGFloat(i)).setFill()
-        NSBezierPath(ovalIn: NSRect(x: s * x - r, y: y - r, width: r * 2, height: r * 2)).fill()
-    }
-    for x in [0.66, 0.78] {
-        bar.setFill()
-        NSBezierPath(ovalIn: NSRect(x: s * x - r, y: y - r, width: r * 2, height: r * 2)).fill()
-    }
-    let chevron = NSBezierPath()
-    chevron.move(to: NSPoint(x: s * 0.55, y: y + s * 0.11))
-    chevron.line(to: NSPoint(x: s * 0.46, y: y))
-    chevron.line(to: NSPoint(x: s * 0.55, y: y - s * 0.11))
-    chevron.lineWidth = s * 0.045
-    chevron.lineCapStyle = .round
-    chevron.lineJoinStyle = .round
-    bar.setStroke()
-    chevron.stroke()
+    // The menu bar icon's magic wand, white, filling the middle of the square, on a layer of its
+    // own so it can be painted white without painting the square.
+    let layer = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px,
+                                 bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                 colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: layer)
+    // Drawn black, then painted white where it is, as a template image shows in the menu bar.
+    let side = s * 0.56
+    let wand = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)!
+        .withSymbolConfiguration(.init(pointSize: side, weight: .medium))!
+    let fit = min(side / wand.size.width, side / wand.size.height)
+    let size = NSSize(width: wand.size.width * fit, height: wand.size.height * fit)
+    wand.draw(in: NSRect(x: (s - size.width) / 2, y: (s - size.height) / 2, width: size.width, height: size.height))
+    NSColor.white.setFill()
+    NSRect(x: 0, y: 0, width: s, height: s).fill(using: .sourceIn)
+    NSGraphicsContext.restoreGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowColor = backBottom.withAlphaComponent(0.45)
+    shadow.shadowOffset = NSSize(width: 0, height: -s * 0.012)
+    shadow.shadowBlurRadius = s * 0.02
+    NSGraphicsContext.saveGraphicsState()
+    shadow.set()
+    layer.draw(in: NSRect(x: 0, y: 0, width: s, height: s), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: nil)
+    NSGraphicsContext.restoreGraphicsState()
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!

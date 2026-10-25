@@ -122,7 +122,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyCollapsed() {
         divider.length = collapsed ? collapsedLength : Self.dividerLength
         divider.button?.image = collapsed ? nil : Self.dividerImage
-        toggle.button?.image = Self.symbol(collapsed ? "chevron.left.circle" : "chevron.right.circle")
+        // A magic wand, as on the app's icon: solid while icons are hidden.
+        toggle.button?.image = Self.symbol(collapsed ? "wand.and.stars.inverse" : "wand.and.stars")
     }
 
     private func applyLanguage() {
